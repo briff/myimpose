@@ -13,14 +13,14 @@ def impose_pdf_on_a3(input_pdf_path, output_pdf_path):
         y2 = y1 + 709
         x3 = x0
         y3 = y2
-        c.line(x0, y0, x0, y0 + 25)
-        c.line(x0, y0, x0+25, y0)
-        c.line(x1, y1, x1-25, y1)
-        c.line(x1, y1, x1, y1 + 25)
-        c.line(x2, y2, x2-25, y2)
-        c.line(x2, y2, x2, y2 - 25)
-        c.line(x3, y3, x3 + 25, y3)
-        c.line(x3, y3, x3, y3 - 25)
+        c.line(x0, y0-5, x0, y0 - 25)
+        c.line(x0-5, y0, x0 - 25, y0)
+        c.line(x1 + 5, y1, x1+25, y1)
+        c.line(x1, y1-5, x1, y1 - 25)
+        c.line(x2+5, y2, x2+25, y2)
+        c.line(x2, y2+5, x2, y2 + 25)
+        c.line(x3-5, y3, x3 - 25, y3)
+        c.line(x3, y3+5, x3, y3 + 25)
         
         c.showPage()
         c.save()
@@ -33,10 +33,22 @@ def impose_pdf_on_a3(input_pdf_path, output_pdf_path):
         if len(reader.pages) % 4 != 0:
             raise ValueError("Input PDF must n times 4 pages")
 
+        # Generate booklet page order (imposition)
+        n = len(reader.pages)
+        booklet_indexes = []
+        for i in range(n // 4):
+            booklet_indexes.extend([
+                n - 1 - i * 2,      # last, second-last, ...
+                i * 2,              # first, second, ...
+                i * 2 + 1,          # second, third, ...
+                n - 2 - i * 2       # second-last-1, third-last-1, ...
+            ])
+
         # Create a new A3 page for each pair of B5 pages
-        for i in range(0, 8, 2):
-            page1 = reader.pages[i]
-            page2 = reader.pages[i + 1]
+        # Use the booklet_indexes to select pages in imposed order, two at a time
+        for i in range(0, len(booklet_indexes), 2):
+            page1 = reader.pages[booklet_indexes[i]]
+            page2 = reader.pages[booklet_indexes[i + 1]]
 
             # Create an A3 page and adjust its dimensions
             a3_page = pypdf.PageObject.create_blank_page(width=1191, height=842)  # A3 dimensions in points
@@ -46,7 +58,7 @@ def impose_pdf_on_a3(input_pdf_path, output_pdf_path):
             page2.add_transformation(pypdf.Transformation().translate( x0 + 499, y0))
             page2.cropbox=pypdf.generic.RectangleObject([0,0,1191,842])
             a3_page.merge_page(page2)
-            if i % 4 == 2: a3_page.merge_page(cropReader.pages[0])
+            a3_page.merge_page(cropReader.pages[0])
             writer.add_page(a3_page)
         writer.write(output_file)
 
